@@ -1,0 +1,48 @@
+---
+- name: Set project root path
+  set_fact:
+    project_root: "{{ playbook_dir | dirname }}"
+
+- name: Build Docker image
+  community.docker.docker_image:
+    name: http-checker
+    tag: latest
+    build:
+      path: "{{ project_root }}"
+    source: build
+    force_source: yes
+
+- name: Remove existing container
+  community.docker.docker_container:
+    name: http-checker-run
+    state: absent
+  ignore_errors: yes
+
+- name: Run Docker container
+  community.docker.docker_container:
+    name: http-checker-run
+    image: http-checker:latest
+    state: started
+    detach: no
+    auto_remove: no
+  register: container_result
+
+- name: Fail if container exited with error
+  fail:
+    msg: "Container failed with exit code: {{ container_result.container.State.ExitCode }}"
+  when: container_result.container.State.ExitCode != 0
+
+- name: Fetch docker logs via Ansible
+  command: docker logs http-checker-run
+  register: docker_logs_output
+  changed_when: false
+
+- name: Display docker logs
+  debug:
+    msg: "{{ docker_logs_output.stdout_lines }}"
+
+- name: Remove container after log collection
+  community.docker.docker_container:
+    name: http-checker-run
+    state: absent
+
