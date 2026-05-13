@@ -1,0 +1,8 @@
+---
+- name: Install Docker and run HTTP checker script
+  hosts: local
+  become: yes
+
+  roles:
+    - docker_install
+    - run_script
